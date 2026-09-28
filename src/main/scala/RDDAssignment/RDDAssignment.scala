@@ -29,12 +29,11 @@ object RDDAssignment {
     * @param commits RDD containing commit data.
     * @return RDD containing tuples indicating the programming language (extension) and number of occurrences.
     */
-    def fileToFileType(file : File):String ={
+    private def fileToFileType(file : File):String ={
       if(file.filename.isEmpty) return "unknown"
       val fileName = file.filename.get
-      val extension = fileName.substring(fileName.indexOf("."))
-      if(extension == "") return "unknown"
-      extension
+      if(!fileName.matches(".*\\..*")) return "unknown"
+      fileName.replaceFirst("^.*\\.", "")
     }
 
   def assignment_2(commits: RDD[Commit]): RDD[(String, Long)] = {
