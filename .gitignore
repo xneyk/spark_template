@@ -1,0 +1,4 @@
+# ignore data director (it is too large)
+data/
+#ignore build artifacts
+target/
