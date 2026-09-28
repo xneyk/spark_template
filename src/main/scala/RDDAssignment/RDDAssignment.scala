@@ -29,7 +29,18 @@ object RDDAssignment {
     * @param commits RDD containing commit data.
     * @return RDD containing tuples indicating the programming language (extension) and number of occurrences.
     */
-  def assignment_2(commits: RDD[Commit]): RDD[(String, Long)] = ???
+    def fileToFileType(file : File):String ={
+      if(file.filename.isEmpty) return "unknown"
+      val fileName = file.filename.get
+      val extension = fileName.substring(fileName.indexOf("."))
+      if(extension == "") return "unknown"
+      extension
+    }
+
+  def assignment_2(commits: RDD[Commit]): RDD[(String, Long)] = {
+    val rddFiles = commits.flatMap((c : Commit) => c.files)
+     rddFiles.map(f => fileToFileType(f)).map(x => (x,1L)).reduceByKey((acc, x) => acc + x)
+  }
 
   /**
     * Competitive users on GitHub might be interested in their ranking in the number of commits. We want you to return an
