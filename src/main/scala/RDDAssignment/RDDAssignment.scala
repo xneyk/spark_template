@@ -51,7 +51,9 @@ object RDDAssignment {
     * @param commits RDD containing commit data.
     * @return RDD containing the rank, the name and the total number of commits for every author, in the ordered fashion.
     */
-  def assignment_3(commits: RDD[Commit]): RDD[(Long, String, Long)] = ???
+  def assignment_3(commits: RDD[Commit]): RDD[(Long, String, Long)] = {
+    commits.map(c => c.commit.author.name).map(x => (x,1L)).reduceByKey((acc, x) => acc + x).map( n => (- n._2 ,n._1)).sortBy(N => (N._1, N._2.toLowerCase)).zipWithIndex().map(x => (x._2,x._1._2,- x._1._1))
+  }
 
   /**
     * Some users are interested in seeing an overall contribution of all their work. For this exercise we want an RDD that
