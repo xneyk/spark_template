@@ -3,9 +3,8 @@ package RDDAssignment
 import java.util.UUID
 import java.math.BigInteger
 import java.security.MessageDigest
-import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.{Edge, EdgeRDD, Graph, VertexRDD}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.catalyst.util.StringUtils
 import utils.{Commit, File, Stats}
 
 object RDDAssignment {
@@ -147,7 +146,7 @@ object RDDAssignment {
     * @return RDD containing the files in each repository as described above.
     */
   def assignment_8(commits: RDD[Commit]): RDD[(String, Iterable[File])] = {
-    commits.map(c => (c, c.files)).flatMapValues(f => f).filter(i => i._2.filename.isDefined).map(i => ((i._1.url.split('/')(5), i._2.filename.get), (i._2, i._1.commit.committer.date.getTime))).reduceByKey((a, b) => if (a._2 > b._2) a else b).map(f => (f._1._1, f._2._1)).aggregateByKey(Nil :List[File])( (acc: List[File], b: File) => b::acc, (c: List[File],d: List[File]) => c::: d).map(f => (f._1, f._2.toIterable))
+    commits.map(c => (c, c.files)).flatMapValues(f => f).filter(i => i._2.filename.isDefined).map(i => ((i._1.url.split('/')(5), i._2.filename.get), (i._2, i._1.commit.committer.date.getTime))).reduceByKey((a, b) => if (a._2 > b._2) a else b).map(f => (f._1._1, f._2._1)).aggregateByKey(Nil :List[File])( (acc: List[File], b: File) => b::acc, (c: List[File],d: List[File]) => c::: d).map(f => (f._1, f._2))
   }
 
 
@@ -224,5 +223,12 @@ object RDDAssignment {
     * @param commits RDD containing commit data.
     * @return Graph representation of the commits as described above.
     */
-  def assignment_11(commits: RDD[Commit]): Graph[(String, String), String] = ???
+  def assignment_11(commits: RDD[Commit]): Graph[(String, String), String] = {
+
+    val repository = VertexRDD(commits.map(c => (md5HashString(c.url.split('/')(5)+ c.url.split('/')(4)+"repository"),(c.url.split('/')(4)+"/" + c.url.split('/')(5),"repository"))))
+    val developers = VertexRDD(commits.map(c => (md5HashString(c.commit.committer.name + "developer"), (c.commit.committer.name, "developer"))))
+    val edges = EdgeRDD.fromEdges(commits.map(c => Edge(md5HashString(c.url.split('/')(5)+ c.url.split('/')(4)+"repository"), md5HashString(c.commit.committer.name + "developer"),"rd"+c.commit.committer.name+c.url.split('/')(4)+ c.url.split('/')(5)))).distinct
+    val vertices = repository.union(developers).distinct
+    Graph(vertices,edges)
+  }
 }
