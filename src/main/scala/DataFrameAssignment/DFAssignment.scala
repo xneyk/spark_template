@@ -3,7 +3,7 @@ package DataFrameAssignment
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, year}
+import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, year, unix_timestamp, lit}
 
 /**
   * Please read the comments carefully, as they describe the expected result and may contain hints in how
@@ -94,7 +94,17 @@ object DFAssignment {
     * @param commits Commit DataFrame, created from the data_raw.json file.
     * @return the input DataFrame with the appended `age` column.
     */
-  def assignment_14(commits: DataFrame, snapShotTimestamp: Timestamp): DataFrame = ???
+  def assignment_14(commits: DataFrame, snapShotTimestamp: Timestamp): DataFrame = {
+    val format = "yyyy-MM-dd'T'HH:mm:ss.SSSX"
+    val snapShotTimeInSeconds = lit(snapShotTimestamp.getTime/1000L)
+
+    val result = commits.withColumn(
+      "age",
+      snapShotTimeInSeconds - unix_timestamp(col("commit.committer.date"), format)
+    )
+
+    return result
+  }
 
   /**
     * To perform the analysis on commit behavior, the intermediate time of commits is needed. We require that the DataFrame
