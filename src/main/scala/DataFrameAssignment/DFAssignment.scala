@@ -3,6 +3,7 @@ package DataFrameAssignment
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, year}
 
 /**
   * Please read the comments carefully, as they describe the expected result and may contain hints in how
@@ -30,7 +31,19 @@ object DFAssignment {
     *                SHA's.
     * @return DataFrame of commits from the requested authors, including the commit SHA and the according timestamp.
     */
-  def assignment_12(commits: DataFrame, authors: Seq[String]): DataFrame = ???
+  def assignment_12(commits: DataFrame, authors: Seq[String]): DataFrame = {
+    val result = commits
+      .select(
+        col("commit.committer.name").as("committer"),
+        col("sha"),
+        col("commit.committer.date").as("timestamp")
+      )
+      .filter(col("committer").isin(authors: _*))
+      // authors: _* converts the sequence to individual arguments as fn(1st_elem, 2nd_elem, ...)
+      .orderBy(col("timestamp"))
+
+    return result
+  }
 
   /**
     * In order to generate weekly dashboards for all projects, we need the data to be partitioned by weeks. As projects
@@ -48,7 +61,20 @@ object DFAssignment {
     * @return DataFrame containing 4 columns: repository name, week number, year and the number of commits for that
     *         week.
     */
-  def assignment_13(commits: DataFrame): DataFrame = ???
+  def assignment_13(commits: DataFrame): DataFrame = {
+    // extract repository name and get the week number and year for each commit
+    val translated_commits = commits.select(
+      regexp_extract(col("url"), "/repos/[^/]+/([^/]+)/commits/", 1).as("repository"),
+      weekofyear(col("commit.committer.date")).as("week"),
+      year(col("commit.committer.date")).as("year")
+    )
+    
+    val result = translated_commits
+      .groupBy("repository", "week", "year")
+      .count()
+
+    return result
+  }
 
   /**
     * A developer is interested in the age of commits in seconds. Although this is something that can always be
