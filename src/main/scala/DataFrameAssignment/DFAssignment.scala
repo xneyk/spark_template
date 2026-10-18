@@ -3,7 +3,8 @@ package DataFrameAssignment
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, year, unix_timestamp, lit}
+import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, year, unix_timestamp, lit, coalesce, datediff, lag, to_timestamp}
+import org.apache.spark.sql.expressions.Window
 
 /**
   * Please read the comments carefully, as they describe the expected result and may contain hints in how
@@ -129,7 +130,33 @@ object DFAssignment {
     * @param authorName Name of the author for which the result must be generated.
     * @return DataFrame with an appended column expressing the number of days since last commit, for the given user.
     */
-  def assignment_15(commits: DataFrame, authorName: String): DataFrame = ???
+  def assignment_15(commits: DataFrame, authorName: String): DataFrame = {
+    val commits_by_author = commits.filter(col("commit.committer.name") === authorName)
+
+    val window = Window.orderBy(col("timestamp"))
+
+    // add an auxiliary column with the commit timestamp
+    val with_timestamp = commits_by_author.withColumn(
+      "timestamp",
+      to_timestamp(col("commit.committer.date"), "yyyy-MM-dd'T'HH:mm:ss.SSSX")
+    )
+    // add an auxiliary column with the previous commit timestamp
+    val with_previous = with_timestamp.withColumn(
+      "previous_timestamp",
+      lag(col("timestamp"), 1).over(window)
+    )
+
+    val result = with_previous
+      .withColumn(
+        "time_diff",
+        coalesce(datediff(col("timestamp"), col("previous_timestamp")), lit(0))
+      )
+      .drop("previous_timestamp") // drop auxiliary column
+      .drop("timestamp")          // drop auxiliary column
+      .orderBy(col("timestamp"))
+
+    return result
+  }
 
   /**
     * To get a bit of insight into the spark SQL and its aggregation functions, you will have to implement a function
