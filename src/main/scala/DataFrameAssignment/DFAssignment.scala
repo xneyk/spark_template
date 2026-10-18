@@ -3,7 +3,7 @@ package DataFrameAssignment
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, dayofweek, year, unix_timestamp, lit, coalesce, datediff, lag, to_timestamp, to_date, substring}
+import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, dayofweek, year, unix_timestamp, lit, coalesce, datediff, lag, to_timestamp, to_date, substring, explode}
 import org.apache.spark.sql.expressions.Window
 
 /**
@@ -208,7 +208,16 @@ object DFAssignment {
     * @return the original DataFrame with an appended column `commit_time_diff`, containing the time difference
     *         (in number of seconds) between authorizing and committing.
     */
-  def assignment_17(commits: DataFrame): DataFrame = ???
+  def assignment_17(commits: DataFrame): DataFrame = {
+    val format = "yyyy-MM-dd'T'HH:mm:ss.SSSX"
+    
+    val result = commits.withColumn(
+      "commit_time_diff",
+      unix_timestamp(col("commit.committer.date"), format) - unix_timestamp(col("commit.author.date"), format)
+    )
+
+    return result
+  }
 
   /**
     * Using DataFrames, find all the commit SHA's from which a branch has been created, including the number of
@@ -229,7 +238,23 @@ object DFAssignment {
     * @return DataFrame containing the commit SHAs from which at least one new branch has been created, and the actual
     *         number of created branches
     */
-  def assignment_18(commits: DataFrame): DataFrame = ???
+  def assignment_18(commits: DataFrame): DataFrame = {
+    val parent_shas = commits
+      .selectExpr("explode(parents) as parent")
+      .select(col("parent.sha").as("sha"))
+
+    val shas_in_data = commits
+      .select(col("sha").as("parent_sha"))
+      .distinct()
+
+    val result = parent_shas
+      .join(shas_in_data, parent_shas("sha") === shas_in_data("parent_sha"), "inner")
+      .groupBy(parent_shas("sha"))
+      .count()
+      .withColumnRenamed("count", "times_parent")
+    
+    return result
+  }
 
   /**
     * In the given commit DataFrame, find all commits from which a fork has been created. We are interested in the names
@@ -253,5 +278,48 @@ object DFAssignment {
     * @return DataFrame containing the parent and child repository names, the SHA of the commit from which a new fork
     *         has been created and the SHA of the first commit in the fork repository
     */
-  def assignment_19(commits: DataFrame): DataFrame = ???
+  def assignment_19(commits: DataFrame): DataFrame = {
+    val children = commits
+      .select(
+        col("sha").as("child_sha"),
+        regexp_extract(
+          col("url"),
+          "/repos/([^/]+/[^/]+)/commits/",
+          1
+        ).as("child_repo_name"),
+        explode(col("parents")).as("parent")
+      )
+      .select(
+        col("child_sha"),
+        col("child_repo_name"),
+        col("parent.sha").as("parent_sha")
+      )
+      .alias("child")
+
+    val known_commits = commits
+      .select(
+        col("sha").as("known_sha"),
+        regexp_extract(
+          col("url"),
+          "/repos/([^/]+/[^/]+)/commits/",
+          1
+        ).as("repo_name")
+      )
+      .alias("parent")
+
+    children
+      .join(
+        known_commits,
+        col("child.parent_sha") === col("parent.known_sha") &&
+          col("child.child_repo_name") =!= col("parent.repo_name"),
+        "inner"
+      )
+      .select(
+        col("parent.repo_name").as("repo_name"),
+        col("child.child_repo_name").as("child_repo_name"),
+        col("child.parent_sha").as("parent_sha"),
+        col("child.child_sha").as("child_sha")
+      )
+      .distinct()
+  }
 }
