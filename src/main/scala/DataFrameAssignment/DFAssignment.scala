@@ -3,7 +3,7 @@ package DataFrameAssignment
 import java.sql.Timestamp
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, year, unix_timestamp, lit, coalesce, datediff, lag, to_timestamp}
+import org.apache.spark.sql.functions.{col, regexp_extract, weekofyear, dayofweek, year, unix_timestamp, lit, coalesce, datediff, lag, to_timestamp, to_date, substring}
 import org.apache.spark.sql.expressions.Window
 
 /**
@@ -175,7 +175,20 @@ object DFAssignment {
     * @return DataFrame containing a `day` column and a `commits_per_day` column representing the total number of
     *         commits that have been made on that week day.
     */
-  def assignment_16(commits: DataFrame): DataFrame = ???
+  def assignment_16(commits: DataFrame): DataFrame = {    
+    val commits_days = commits.select(
+      dayofweek(
+        to_date(substring(col("commit.committer.date"), 1, 10), "yyyy-MM-dd")
+      ).as("day")
+    )
+
+    val result = commits_days
+      .groupBy("day")
+      .count()
+      .withColumnRenamed("count", "commits_per_day")
+
+    return result
+  }
 
   /**
     * Commits can be uploaded on different days. We want to get insight into the difference in commit time of the author and
