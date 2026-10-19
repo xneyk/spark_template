@@ -240,14 +240,17 @@ object DFAssignment {
     */
   def assignment_18(commits: DataFrame): DataFrame = {
     val parent_shas = commits
-      .selectExpr("explode(parents) as parent")
-      .select(col("parent.sha").as("sha"))
+      .selectExpr("explode(parents) as parent", "sha")
+      .select(col("parent.sha").as("sha"),
+      col("sha").as("tempsha"))
+      .distinct()
 
     val shas_in_data = commits
       .select(col("sha").as("parent_sha"))
 
     val result = parent_shas
       .join(shas_in_data, parent_shas("sha") === shas_in_data("parent_sha"), "inner")
+      .select(col("sha"))
       .groupBy(parent_shas("sha"))
       .count()
       .withColumnRenamed("count", "times_parent")
