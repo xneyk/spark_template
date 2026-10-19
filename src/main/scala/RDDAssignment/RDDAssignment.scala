@@ -107,13 +107,13 @@ object RDDAssignment {
 
   def reduce6(a :(Int, Int), b :(Int, Int)) :(Int, Int) = {
     if(a._1 == b._1) return (a._1, a._2+b._2)
-    if (a._1 > b._1) return (a._1, a._2)
-    (b._1, b._2)
+    if (a._1 > b._1) return a
+    b
   }
 
 
   def assignment_6(commits: RDD[Commit]): RDD[(String, (Int, Int))] = {
-    commits.map(c => (c.commit.author.name, c.commit.message)).filter(c => c._2.startsWith("Revert")).mapValues(m => m.split("[ \",]+").takeWhile(_.equals("Revert")).length ).map(c => (c._1,(c._2, 1))).reduceByKey((a, b) => reduce6(a, b))
+    commits.map(c => (c.commit.author.name, c.commit.message)).filter(c => c._2.startsWith("Revert")).mapValues(m => "Revert".r.findAllIn(m).size).map(c => (c._1,(c._2, 1))).reduceByKey((a, b) => reduce6(a, b))
   }
 
 
@@ -131,7 +131,7 @@ object RDDAssignment {
     *         well as the names of the unique committers to this repository.
     */
   def assignment_7(commits: RDD[Commit]): RDD[(String, Long, Iterable[String])] = {
-    commits.map(c=> (c.url.split('/')(5),(1L, c.commit.author.name)))
+    commits.map(c=> (c.url.split('/')(5),(1L, c.commit.committer.name)))
       .aggregateByKey((0L, Set.empty :Set[String]))( (acc: (Long, Set[String]), b: (Long, String)) => (acc._1+b._1, acc._2+ b._2),
         (c: (Long, Set[String]),d: (Long, Set[String])) => (c._1+d._1,c._2 ++d._2))
         .map(i => (i._1,i._2._1,i._2._2))
