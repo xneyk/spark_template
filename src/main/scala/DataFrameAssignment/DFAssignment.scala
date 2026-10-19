@@ -245,13 +245,13 @@ object DFAssignment {
 
     val shas_in_data = commits
       .select(col("sha").as("parent_sha"))
-      .distinct()
 
     val result = parent_shas
       .join(shas_in_data, parent_shas("sha") === shas_in_data("parent_sha"), "inner")
       .groupBy(parent_shas("sha"))
       .count()
       .withColumnRenamed("count", "times_parent")
+      .filter(col("times_parent") > 1)
     
     return result
   }
