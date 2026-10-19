@@ -82,8 +82,8 @@ object RDDAssignment {
     *         repositories.
     */
   def assignment_5(commits: RDD[Commit]): RDD[String] = {
-    val owners = commits.map(c => c.url.split("/")(4))
-    val commiters = commits.map(c => c.commit.author.name)
+    val owners = commits.map(c => c.url.split("/")(4)).distinct()
+    val commiters = commits.map(c => c.commit.author.name).distinct()
     val union = owners.union(commiters)
     val intersection = owners.intersection(commiters)
     union.subtract(intersection)
@@ -113,7 +113,7 @@ object RDDAssignment {
 
 
   def assignment_6(commits: RDD[Commit]): RDD[(String, (Int, Int))] = {
-    commits.map(c => (c.commit.author.name, c.commit.message.toLowerCase)).filter(c => c._2.startsWith("revert")).mapValues(m => m.split("\\W+").takeWhile(_.equals("revert")).length ).map(c => (c._1,(c._2, 1))).reduceByKey((a, b) => reduce6(a, b))
+    commits.map(c => (c.commit.author.name, c.commit.message)).filter(c => c._2.startsWith("Revert")).mapValues(m => m.split("[ \",]+").takeWhile(_.equals("Revert")).length ).map(c => (c._1,(c._2, 1))).reduceByKey((a, b) => reduce6(a, b))
   }
 
 
@@ -131,7 +131,10 @@ object RDDAssignment {
     *         well as the names of the unique committers to this repository.
     */
   def assignment_7(commits: RDD[Commit]): RDD[(String, Long, Iterable[String])] = {
-    commits.map(c=> (c.url.split('/')(5),(1L, c.commit.author.name))).aggregateByKey((0L, Nil :List[String]))( (acc: (Long, List[String]), b: (Long, String)) => (acc._1+b._1, b._2::acc._2), (c: (Long, List[String]),d: (Long, List[String])) => (c._1+d._1,c._2::: d._2)).map(i => (i._1,i._2._1,i._2._2))
+    commits.map(c=> (c.url.split('/')(5),(1L, c.commit.author.name)))
+      .aggregateByKey((0L, Set.empty :Set[String]))( (acc: (Long, Set[String]), b: (Long, String)) => (acc._1+b._1, acc._2+ b._2),
+        (c: (Long, Set[String]),d: (Long, Set[String])) => (c._1+d._1,c._2 ++d._2))
+        .map(i => (i._1,i._2._1,i._2._2))
   }
 
   /**
